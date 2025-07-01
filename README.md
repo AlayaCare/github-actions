@@ -4,17 +4,17 @@ This repository contains a collection of reusable GitHub Actions workflows for A
 
 ## Available Actions
 
-### Terraform Module Release Labels
+### Terraform Release Labels
 
 Adds standardized release labels to Terraform module repositories. These labels are used to indicate what type of version bump a PR should trigger when merged.
 
-[View Documentation](./terraform-module-release-labels/README.md)
+[View Documentation](./terraform-release-labels/README.md)
 
-### Terraform Semantic Versioning Release
+### Terraform Release Semver
 
 Automatically creates semantic version releases for Terraform modules based on PR labels. When a PR is merged, it will create a new release with a version number incremented according to the label applied to the PR.
 
-[View Documentation](./terraform-semver-release/README.md)
+[View Documentation](./terraform-release-semver/README.md)
 
 ## Complete Workflow Example
 
@@ -35,7 +35,7 @@ on:
 
 jobs:
   add-labels:
-    uses: AlayaCare/github-actions/terraform-module-release-labels/.github/workflows/add-release-labels.yml@main
+    uses: AlayaCare/github-actions/terraform-release-labels/.github/workflows/add-release-labels.yml@main
 ```
 
 2. Then, add the semantic versioning release workflow:
@@ -54,7 +54,7 @@ on:
 jobs:
   release:
     if: github.event.pull_request.merged == true
-    uses: AlayaCare/github-actions/terraform-semver-release/.github/workflows/semver-release.yml@main
+    uses: AlayaCare/github-actions/terraform-release-semver/.github/workflows/semver-release.yml@main
 ```
 
 3. When creating a PR, apply one of the following labels to indicate the type of release:

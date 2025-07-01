@@ -1,4 +1,4 @@
-# Terraform Module Release Labels
+# Terraform Release Labels
 
 This action adds standardized release labels to Terraform module repositories. These labels are used to indicate what type of version bump a PR should trigger when merged.
 
@@ -10,7 +10,7 @@ This action adds standardized release labels to Terraform module repositories. T
 
 ## Purpose
 
-These labels work in conjunction with the [Terraform Semantic Versioning Release](../terraform-semver-release/README.md) action to automate versioning of Terraform modules. When a PR is merged, the semantic versioning action will check for these labels and create a new release with the appropriate version bump.
+These labels work in conjunction with the [Terraform Release Semver](../terraform-release-semver/README.md) action to automate versioning of Terraform modules. When a PR is merged, the semantic versioning action will check for these labels and create a new release with the appropriate version bump.
 
 ## Usage
 
@@ -30,7 +30,7 @@ on:
 
 jobs:
   add-labels:
-    uses: AlayaCare/github-actions/terraform-module-release-labels/.github/workflows/add-release-labels.yml@main
+    uses: AlayaCare/github-actions/terraform-release-labels/.github/workflows/add-release-labels.yml@main
 ```
 
 ### Option 2: Use the script
@@ -38,7 +38,7 @@ jobs:
 You can also use the script to add the labels directly:
 
 ```bash
-curl -s https://raw.githubusercontent.com/AlayaCare/github-actions/main/terraform-module-release-labels/add-release-labels.sh | bash -s -- YOUR_ORG YOUR_REPO
+curl -s https://raw.githubusercontent.com/AlayaCare/github-actions/main/terraform-release-labels/add-release-labels.sh | bash -s -- YOUR_ORG YOUR_REPO
 ```
 
 Replace `YOUR_ORG` and `YOUR_REPO` with your organization and repository names.

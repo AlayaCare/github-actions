@@ -1,0 +1,75 @@
+name: Semantic Version Release
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+      - master
+
+jobs:
+  release:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: read
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      
+      - name: Determine version bump
+        id: bump
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const labels = context.payload.pull_request.labels.map(label => label.name);
+            
+            let bump = 'patch'; // Default to patch
+            
+            if (labels.includes('release/major')) {
+              bump = 'major';
+            } else if (labels.includes('release/minor')) {
+              bump = 'minor';
+            } else if (labels.includes('release/patch')) {
+              bump = 'patch';
+            }
+            
+            console.log(`Determined version bump: ${bump}`);
+            return bump;
+          result-encoding: string
+      
+      - name: Get latest tag
+        id: latest_tag
+        run: |
+          git fetch --tags
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "LATEST_TAG=${LATEST_TAG}" >> $GITHUB_ENV
+          echo "Latest tag: ${LATEST_TAG}"
+      
+      - name: Bump version and push tag
+        id: tag_version
+        uses: mathieudutour/github-tag-action@v6.1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          default_bump: ${{ steps.bump.outputs.result }}
+          release_branches: main,master
+          tag_prefix: v
+      
+      - name: Create a GitHub release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ steps.tag_version.outputs.new_tag }}
+          name: Release ${{ steps.tag_version.outputs.new_tag }}
+          body: |
+            ## Changes
+            
+            ${{ steps.tag_version.outputs.changelog }}
+            
+            ## Pull Request
+            
+            Merged in #${{ github.event.pull_request.number }} by @${{ github.event.pull_request.user.login }}
+          token: ${{ secrets.GITHUB_TOKEN }}

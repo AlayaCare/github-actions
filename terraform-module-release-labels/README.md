@@ -8,6 +8,10 @@ This action adds standardized release labels to Terraform module repositories. T
 - `release/minor` (🟡 #FBCA04) - Indicates the PR should trigger a minor release on merge
 - `release/patch` (🔵 #C5DEF5) - Indicates the PR should trigger a patch release on merge
 
+## Purpose
+
+These labels work in conjunction with the [Terraform Semantic Versioning Release](../terraform-semver-release/README.md) action to automate versioning of Terraform modules. When a PR is merged, the semantic versioning action will check for these labels and create a new release with the appropriate version bump.
+
 ## Usage
 
 ### Option 1: Include the workflow directly
@@ -38,11 +42,3 @@ curl -s https://raw.githubusercontent.com/AlayaCare/github-actions/main/terrafor
 ```
 
 Replace `YOUR_ORG` and `YOUR_REPO` with your organization and repository names.
-
-## Bulk Application
-
-To apply these labels to multiple repositories at once, you can use the provided script:
-
-```bash
-./bulk-add-labels.sh organization_name "repo1 repo2 repo3"
-```

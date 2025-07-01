@@ -1,0 +1,79 @@
+name: Add Terraform Module Release Labels
+
+on:
+  # Can be manually triggered
+  workflow_dispatch:
+  
+  # Automatically run when repository is created
+  create:
+    branches:
+      - main
+      - master
+
+jobs:
+  add-labels:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: read
+    
+    steps:
+      - name: Add Terraform Module Release Labels
+        uses: actions/github-script@v6
+        with:
+          script: |
+            // Define the release labels to add
+            const releaseLabels = [
+              {
+                name: 'release/major',
+                color: 'FF0000',
+                description: 'Indicates the PR should trigger a major release on merge'
+              },
+              {
+                name: 'release/minor',
+                color: 'FBCA04',
+                description: 'Indicates the PR should trigger a minor release on merge'
+              },
+              {
+                name: 'release/patch',
+                color: 'C5DEF5',
+                description: 'Indicates the PR should trigger a patch release on merge'
+              }
+            ];
+            
+            // Get current labels in the repository
+            const currentLabels = await github.rest.issues.listLabelsForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo
+            });
+            
+            const currentLabelNames = currentLabels.data.map(label => label.name);
+            
+            // Add or update each release label
+            for (const label of releaseLabels) {
+              try {
+                if (currentLabelNames.includes(label.name)) {
+                  console.log(`Updating label: ${label.name}`);
+                  await github.rest.issues.updateLabel({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    name: label.name,
+                    color: label.color,
+                    description: label.description
+                  });
+                } else {
+                  console.log(`Creating label: ${label.name}`);
+                  await github.rest.issues.createLabel({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    name: label.name,
+                    color: label.color,
+                    description: label.description
+                  });
+                }
+              } catch (error) {
+                console.log(`Error with label ${label.name}: ${error.message}`);
+              }
+            }
+            
+            console.log('Terraform module release labels have been added successfully!');

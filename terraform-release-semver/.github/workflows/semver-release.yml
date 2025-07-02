@@ -1,75 +1,93 @@
-name: Semantic Version Release
+name: Semantic Versioning
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+  pull_request_target:
     types: [closed]
-    branches:
-      - main
-      - master
 
 jobs:
-  release:
-    if: github.event.pull_request.merged == true
+  validate-labels:
+    name: Validate PR Labels
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: read
-    
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Check for version labels
+        id: check-labels
+        run: |
+          LABELS=$(jq -r '.pull_request.labels[].name' "$GITHUB_EVENT_PATH")
+          if echo "$LABELS" | grep -qE 'release/major|release/minor|release/patch'; then
+            echo "PR has a valid version label"
+            exit 0
+          else
+            echo "::error::PR must have one of the following labels: release/major, release/minor, release/patch"
+            exit 1
+          fi
+
+  check-multiple-version-labels:
+    name: Check for Multiple Version Labels
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Check for multiple version labels
+        id: check-multiple-labels
+        run: |
+          MAJOR=$(jq -r '.pull_request.labels[].name' "$GITHUB_EVENT_PATH" | grep -c "release/major" || true)
+          MINOR=$(jq -r '.pull_request.labels[].name' "$GITHUB_EVENT_PATH" | grep -c "release/minor" || true)
+          PATCH=$(jq -r '.pull_request.labels[].name' "$GITHUB_EVENT_PATH" | grep -c "release/patch" || true)
+          
+          TOTAL=$((MAJOR + MINOR + PATCH))
+          
+          if [ "$TOTAL" -gt 1 ]; then
+            echo "::error::PR has multiple version labels. Please use only one of: release/major, release/minor, release/patch"
+            exit 1
+          fi
+          
+          echo "PR has the correct number of version labels"
+
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request_target' && github.event.action == 'closed' && github.event.pull_request.merged == true
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      
-      - name: Determine version bump
-        id: bump
-        uses: actions/github-script@v6
-        with:
-          script: |
-            const labels = context.payload.pull_request.labels.map(label => label.name);
-            
-            let bump = 'patch'; // Default to patch
-            
-            if (labels.includes('release/major')) {
-              bump = 'major';
-            } else if (labels.includes('release/minor')) {
-              bump = 'minor';
-            } else if (labels.includes('release/patch')) {
-              bump = 'patch';
-            }
-            
-            console.log(`Determined version bump: ${bump}`);
-            return bump;
-          result-encoding: string
-      
-      - name: Get latest tag
-        id: latest_tag
+
+      - name: Get version label
+        id: get-label
         run: |
-          git fetch --tags
-          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-          echo "LATEST_TAG=${LATEST_TAG}" >> $GITHUB_ENV
-          echo "Latest tag: ${LATEST_TAG}"
-      
+          LABELS=$(jq -r '.pull_request.labels[].name' "$GITHUB_EVENT_PATH")
+          if echo "$LABELS" | grep -q "release/major"; then
+            echo "VERSION_TYPE=major" >> $GITHUB_OUTPUT
+          elif echo "$LABELS" | grep -q "release/minor"; then
+            echo "VERSION_TYPE=minor" >> $GITHUB_OUTPUT
+          elif echo "$LABELS" | grep -q "release/patch"; then
+            echo "VERSION_TYPE=patch" >> $GITHUB_OUTPUT
+          else
+            echo "::error::No version label found"
+            exit 1
+          fi
+
       - name: Bump version and push tag
         id: tag_version
         uses: mathieudutour/github-tag-action@v6.1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          default_bump: ${{ steps.bump.outputs.result }}
-          release_branches: main,master
+          release_branches: main
+          default_bump: ${{ steps.get-label.outputs.VERSION_TYPE }}
           tag_prefix: v
-      
-      - name: Create a GitHub release
-        uses: ncipollo/release-action@v1
+
+      - name: Create Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag: ${{ steps.tag_version.outputs.new_tag }}
-          name: Release ${{ steps.tag_version.outputs.new_tag }}
+          tag_name: ${{ steps.tag_version.outputs.new_tag }}
+          release_name: Release ${{ steps.tag_version.outputs.new_tag }}
           body: |
-            ## Changes
-            
+            ## Changes in this Release
             ${{ steps.tag_version.outputs.changelog }}
-            
-            ## Pull Request
-            
-            Merged in #${{ github.event.pull_request.number }} by @${{ github.event.pull_request.user.login }}
-          token: ${{ secrets.GITHUB_TOKEN }}
+          draft: false
+          prerelease: false
